@@ -1,0 +1,27 @@
+{
+  "name": "@square2/square2-core",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "biome check",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "devDependencies": {
+    "@square2/biome-config": "github:square-two/biome-config",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

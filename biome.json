@@ -1,0 +1,3 @@
+{
+  "extends": ["@square2/biome-config/biome"]
+}
