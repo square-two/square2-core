@@ -53,10 +53,10 @@ export class Color {
   static fromHex(hex: `#${string}`): Color {
     const matches = HEX_COLOR_REGEX.exec(hex);
     if (matches) {
-      const r = Number.parseInt(`0x${matches[1]}`, 10);
-      const g = Number.parseInt(`0x${matches[2]}`, 10);
-      const b = Number.parseInt(`0x${matches[3]}`, 10);
-      const a = Number.parseInt(`0x${matches[4]}`, 10);
+      const r = Number.parseInt(`0x${matches[1]}`, 16);
+      const g = Number.parseInt(`0x${matches[2]}`, 16);
+      const b = Number.parseInt(`0x${matches[3]}`, 16);
+      const a = Number.parseInt(`0x${matches[4]}`, 16);
 
       return Color.fromBytes(r, g, b, a);
     }

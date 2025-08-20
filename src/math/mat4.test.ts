@@ -77,7 +77,7 @@ describe('Mat4', () => {
   });
 
   it('should create a matrix from a translation, rotation, and scale', () => {
-    const mat = Mat4.from2dRotationTranslationScale(Math.PI / 2, 20, 30, 2, 4);
+    const mat = Mat4.from2dRotationTranslationScale({ rotation: Math.PI / 2, x: 20, y: 30, scaleX: 2, scaleY: 4 });
     expect(mat.value).toEqual([
       4.440892098500626e-16, 2, 0, 0, -4, 8.881784197001252e-16,
 
@@ -100,7 +100,7 @@ describe('Mat4', () => {
 
   it('should set an orthographic projection matrix', () => {
     const mat = new Mat4();
-    mat.ortho(0, 800, 600, 0, -1, 1);
+    mat.ortho({ left: 0, right: 800, bottom: 600, top: 0, near: -1, far: 1 });
     expect(mat.value).toEqual([0.0025, 0, 0, 0, 0, -0.0033333333333333335, 0, 0, 0, 0, -1, 0, -1, 1, -0, 1]);
   });
 });
