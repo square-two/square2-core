@@ -33,19 +33,15 @@ export class Color {
    * @param green - The green component.
    * @param blue - The blue component.
    * @param alpha - The alpha component. Defaults to 255.
-   * @param out - Optional output color.
    * @returns The new color.
    */
-  static fromBytes(red: number, green: number, blue: number, alpha: number = 255, out?: Color): Color {
-    const result = out ?? new Color();
-
+  static fromBytes(red: number, green: number, blue: number, alpha: number = 255): Color {
     const r = clamp(red, 0, 255) / 255;
     const g = clamp(green, 0, 255) / 255;
     const b = clamp(blue, 0, 255) / 255;
     const a = clamp(alpha, 0, 255) / 255;
-    result.set(r, g, b, a);
 
-    return result;
+    return new Color(r, g, b, a);
   }
 
   /**
@@ -54,9 +50,7 @@ export class Color {
    * @param out - Optional output color.
    * @returns The new color
    */
-  static fromHex(hex: `#${string}`, out?: Color): Color {
-    const result = out ?? new Color();
-
+  static fromHex(hex: `#${string}`): Color {
     const matches = HEX_COLOR_REGEX.exec(hex);
     if (matches) {
       const r = Number.parseInt(`0x${matches[1]}`, 10);
@@ -64,23 +58,25 @@ export class Color {
       const b = Number.parseInt(`0x${matches[3]}`, 10);
       const a = Number.parseInt(`0x${matches[4]}`, 10);
 
-      Color.fromBytes(r, g, b, a, result);
+      return Color.fromBytes(r, g, b, a);
     }
 
-    return result;
+    throw new Error(`Invalid hex color: ${hex}`);
   }
 
-  static fromInt(color: number, out?: Color): Color {
-    const result = out ?? new Color();
+  /**
+   * Create a color from an integer value.
+   * The integer should be in the format 0xRRGGBBAA.
+   * @param color - The integer color value.
+   * @returns The new color.
+   */
+  static fromInt(color: number): Color {
+    const r = (color >> 24) & 255;
+    const g = (color >> 16) & 255;
+    const b = (color >> 8) & 255;
+    const a = color & 255;
 
-    const r = (color >> 16) & 0xff;
-    const g = (color >> 8) & 0xff;
-    const b = color & 0xff;
-    const a = (color >> 24) & 0xff;
-
-    Color.fromBytes(r, g, b, a, result);
-
-    return result;
+    return Color.fromBytes(r, g, b, a);
   }
 
   /**

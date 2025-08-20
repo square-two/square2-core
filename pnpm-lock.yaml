@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@square2/biome-config':
         specifier: github:square-two/biome-config
-        version: https://codeload.github.com/square-two/biome-config/tar.gz/65f13cb980d7a713a9e2ec8041f577ec4e0816d9(@biomejs/biome@2.2.0)
+        version: https://codeload.github.com/square-two/biome-config/tar.gz/e63bfb1512fd80a61e854f64e8172bfac6cafa2e(@biomejs/biome@2.2.0)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -332,8 +332,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@square2/biome-config@https://codeload.github.com/square-two/biome-config/tar.gz/65f13cb980d7a713a9e2ec8041f577ec4e0816d9':
-    resolution: {tarball: https://codeload.github.com/square-two/biome-config/tar.gz/65f13cb980d7a713a9e2ec8041f577ec4e0816d9}
+  '@square2/biome-config@https://codeload.github.com/square-two/biome-config/tar.gz/e63bfb1512fd80a61e854f64e8172bfac6cafa2e':
+    resolution: {tarball: https://codeload.github.com/square-two/biome-config/tar.gz/e63bfb1512fd80a61e854f64e8172bfac6cafa2e}
     version: 1.0.0
     peerDependencies:
       '@biomejs/biome': ^2.2.0
@@ -772,7 +772,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.46.2':
     optional: true
 
-  '@square2/biome-config@https://codeload.github.com/square-two/biome-config/tar.gz/65f13cb980d7a713a9e2ec8041f577ec4e0816d9(@biomejs/biome@2.2.0)':
+  '@square2/biome-config@https://codeload.github.com/square-two/biome-config/tar.gz/e63bfb1512fd80a61e854f64e8172bfac6cafa2e(@biomejs/biome@2.2.0)':
     dependencies:
       '@biomejs/biome': 2.2.0
 

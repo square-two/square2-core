@@ -1,5 +1,5 @@
-import type { Mat4 } from '../../math/mat4.js';
-import type { Vec2 } from '../../math/vec2.js';
+import type { Rectangle } from '../../math/rectangle.js';
+import { Vec2 } from '../../math/vec2.js';
 import { Vec3 } from '../../math/vec3.js';
 import type { Color } from '../color.js';
 import { getShapeFragmentSource } from '../defaultShaders.js';
@@ -38,7 +38,15 @@ export class ShapeRenderer extends BaseRenderer {
   /**
    * Temporary vector to store a vertex position.
    */
-  private tempPoint: Vec3;
+  private readonly tempVec3: Vec3;
+
+  private readonly tempP1: Vec2;
+
+  private readonly tempP2: Vec2;
+
+  private readonly tempP3: Vec2;
+
+  private readonly tempP4: Vec2;
 
   /**
    * Create a new shape renderer.
@@ -46,7 +54,11 @@ export class ShapeRenderer extends BaseRenderer {
   constructor(context: GLContext) {
     super(context);
 
-    this.tempPoint = new Vec3();
+    this.tempVec3 = new Vec3();
+    this.tempP1 = new Vec2();
+    this.tempP2 = new Vec2();
+    this.tempP3 = new Vec2();
+    this.tempP4 = new Vec2();
 
     this.vertexBuffer = context.gl.createBuffer();
     this.vertexIndices = new Float32Array(this.BUFFER_SIZE * TRIANGLE_OFFSET);
@@ -71,17 +83,21 @@ export class ShapeRenderer extends BaseRenderer {
   override setShader(shader?: Shader): void {
     if (shader) {
       if (shader.type === 'shape') {
-        this.shader = shader;
+        super.setShader(shader);
       }
     } else {
-      this.shader = this.defaultShader;
+      super.setShader();
     }
+  }
+
+  start(): void {
+    this.index = 0;
   }
 
   /**
    * Draw the current batch of triangles.
    */
-  drawBatch(): void {
+  commit(): void {
     if (this.index === 0) {
       return;
     }
@@ -90,7 +106,7 @@ export class ShapeRenderer extends BaseRenderer {
     this.shader.applyBlendMode();
 
     const gl = this.context.gl;
-    gl.uniformMatrix4fv(this.shader.projectionLocation, false, this.projection.value);
+    gl.uniformMatrix4fv(this.shader.uniforms.u_projectionMatrix, false, this.projection.value);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.vertexIndices, gl.DYNAMIC_DRAW);
 
@@ -122,226 +138,193 @@ export class ShapeRenderer extends BaseRenderer {
   }
 
   /**
-   * Draw a solid triangle.
-   * @param x1 - The x coordinate of the first point.
-   * @param y1 - The y coordinate of the first point.
-   * @param x2 - The x coordinate of the second point.
-   * @param y2 - The y coordinate of the second point.
-   * @param x3 - The x coordinate of the third point.
-   * @param y3 - The y coordinate of the third point.
-   * @param color - The color of the triangle.
-   * @param transform - The transformation matrix.
+   * Draw a filled triangle.
+   * @param p1 - The first point of the triangle.
+   * @param p2 - The second point of the triangle.
+   * @param p3 - The third point of the triangle.
    */
-  drawSolidTriangle(
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    x3: number,
-    y3: number,
-    color: Color,
-    transform: Mat4,
-  ): void {
+  drawFilledTriangle(p1: Vec2, p2: Vec2, p3: Vec2): void {
     if (this.index >= this.BUFFER_SIZE) {
-      this.drawBatch();
+      this.commit();
     }
 
-    this.tempPoint.transformMat4(transform, x1, y1, 0);
-    this.updateBuffer(this.tempPoint, color, 0);
+    this.tempVec3.transformMat4(this.transform, p1.x, p1.y, 0);
+    this.updateBuffer(this.tempVec3, this.color, 0);
 
-    this.tempPoint.transformMat4(transform, x2, y2, 0);
-    this.updateBuffer(this.tempPoint, color, 1);
+    this.tempVec3.transformMat4(this.transform, p2.x, p2.y, 0);
+    this.updateBuffer(this.tempVec3, this.color, 1);
 
-    this.tempPoint.transformMat4(transform, x3, y3, 0);
-    this.updateBuffer(this.tempPoint, color, 2);
+    this.tempVec3.transformMat4(this.transform, p3.x, p3.y, 0);
+    this.updateBuffer(this.tempVec3, this.color, 2);
 
     this.index++;
   }
 
   /**
-   * Draw a solid rectangle.
-   * @param x - The x coordinate of the top left corner.
-   * @param y - The y coordinate of the top left corner.
-   * @param width - The width of the rectangle.
-   * @param height - The height of the rectangle.
-   * @param color - The color of the rectangle.
-   * @param transform - The transformation matrix.
-   */
-  drawSolidRect(x: number, y: number, width: number, height: number, color: Color, transform: Mat4): void {
-    this.drawSolidTriangle(x, y, x + width, y, x, y + height, color, transform);
-    this.drawSolidTriangle(x, y + height, x + width, y, x + width, y + height, color, transform);
-  }
-
-  /**
-   * Draw a rectangle.
-   * @param x - The x coordinate of the top left corner.
-   * @param y - The y coordinate of the top left corner.
-   * @param width - The width of the rectangle.
-   * @param height - The height of the rectangle.
-   * @param lineWidth - The width of the line.
-   * @param color - The color of the rectangle.
-   * @param transform - The transformation matrix.
-   */
-  drawRect(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    lineWidth: number,
-    color: Color,
-    transform: Mat4,
-  ): void {
-    // top
-    this.drawLine(x, y, x + width, y, 'inside', lineWidth, color, transform);
-    // right
-    this.drawLine(x + width, y, x + width, y + height, 'inside', lineWidth, color, transform);
-    // bottom
-    this.drawLine(x + width, y + height, x, y + height, 'inside', lineWidth, color, transform);
-    // left
-    this.drawLine(x, y + height, x, y, 'inside', lineWidth, color, transform);
-  }
-
-  /**
    * Draw a line.
-   * @param x1 - The x coordinate of the first point.
-   * @param y1 - The y coordinate of the first point.
-   * @param x2 - The x coordinate of the second point.
-   * @param y2 - The y coordinate of the second point.
+   * @param p1 - The first point of the line.
+   * @param p2 - The second point of the line.
    * @param align - The alignment of the line.
    * @param lineWidth - The width of the line.
-   * @param color - The color of the line.
-   * @param transform - The transformation matrix.
    */
-  drawLine(
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    align: LineAlign,
-    lineWidth: number,
-    color: Color,
-    transform: Mat4,
-  ): void {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
+  drawLine(p1: Vec2, p2: Vec2, align: LineAlign, lineWidth: number): void {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
     const lineLength = Math.sqrt(dx * dx + dy * dy);
+    if (!lineLength) {
+      return;
+    }
+
     const scale = lineWidth / (2 * lineLength);
     const ddx = -scale * dy;
     const ddy = scale * dx;
     switch (align) {
       case 'inside':
-        this.drawSolidTriangle(x1, y1, x1 + ddx * 2, y1 + ddy * 2, x2, y2, color, transform);
-        this.drawSolidTriangle(x2, y2, x1 + ddx * 2, y1 + ddy * 2, x2 + ddx * 2, y2 + ddy * 2, color, transform);
+        this.tempP1.set(p1.x, p1.y);
+        this.tempP2.set(p1.x + ddx * 2, p1.y + ddy * 2);
+        this.tempP3.set(p2.x, p2.y);
+        this.tempP4.set(p2.x + ddx * 2, p2.y + ddy * 2);
         break;
 
       case 'center':
-        this.drawSolidTriangle(x1 + ddx, y1 + ddy, x1 - ddx, y1 - ddy, x2 + ddx, y2 + ddy, color, transform);
-        this.drawSolidTriangle(x2 + ddx, y2 + ddy, x1 - ddx, y1 - ddy, x2 - ddx, y2 - ddy, color, transform);
+        this.tempP1.set(p1.x + ddx, p1.y + ddy);
+        this.tempP2.set(p1.x - ddx, p1.y - ddy);
+        this.tempP3.set(p2.x + ddx, p2.y + ddy);
+        this.tempP4.set(p2.x - ddx, p2.y - ddy);
         break;
 
       case 'outside':
-        this.drawSolidTriangle(x1, y1, x1 - ddx * 2, y1 - ddy * 2, x2, y2, color, transform);
-        this.drawSolidTriangle(x2, y2, x1 - ddx * 2, y1 - ddy * 2, x2 - ddx * 2, y2 - ddy * 2, color, transform);
+        this.tempP1.set(p1.x, p1.y);
+        this.tempP2.set(p1.x - ddx * 2, p1.y - ddy * 2);
+        this.tempP3.set(p2.x, p2.y);
+        this.tempP4.set(p2.x - ddx * 2, p2.y - ddy * 2);
         break;
+    }
+
+    this.drawFilledTriangle(this.tempP1, this.tempP2, this.tempP3);
+    this.drawFilledTriangle(this.tempP3, this.tempP2, this.tempP4);
+  }
+
+  /**
+   * Draw a filled rectangle.
+   * @param rect - The rectangle to draw.
+   */
+  drawFilledRect(rect: Rectangle): void {
+    this.tempP1.set(rect.x, rect.y);
+    this.tempP2.set(rect.x + rect.width, rect.y);
+    this.tempP3.set(rect.x, rect.y + rect.height);
+    this.tempP4.set(rect.x + rect.width, rect.y + rect.height);
+    this.drawFilledTriangle(this.tempP1, this.tempP2, this.tempP3);
+    this.drawFilledTriangle(this.tempP3, this.tempP2, this.tempP4);
+  }
+
+  /**
+   * Draw a rectangle.
+   * @param rect - The rectangle to draw.
+   * @param lineWidth - The width of the line.
+   */
+  drawRect(rect: Rectangle, lineWidth: number): void {
+    // Top.
+    this.tempP1.set(rect.x, rect.y);
+    this.tempP2.set(rect.x + rect.width, rect.y);
+    this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
+
+    // Right.
+    this.tempP1.set(rect.x + rect.width, rect.y);
+    this.tempP2.set(rect.x + rect.width, rect.y + rect.height);
+    this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
+
+    // Bottom.
+    this.tempP1.set(rect.x + rect.width, rect.y + rect.height);
+    this.tempP2.set(rect.x, rect.y + rect.height);
+    this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
+
+    // Left.
+    this.tempP1.set(rect.x, rect.y + rect.height);
+    this.tempP2.set(rect.x, rect.y);
+    this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
+  }
+
+  /**
+   * Draw a filled circle.
+   * @param center - The center of the circle.
+   * @param radius - The radius of the circle.
+   * @param segments - The number of segments in the circle.
+   */
+  drawFilledCircle(center: Vec2, radius: number, segments: number): void {
+    if (radius <= 0) {
+      console.error('ShapeRenderer: Radius must be positive.');
+      return;
+    }
+
+    if (segments < 3) {
+      console.error('ShapeRenderer: Segments must be at least 3.');
+      return;
+    }
+
+    const theta = (2 * Math.PI) / segments;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    let sx = radius;
+    let sy = 0.0;
+    for (let i = 0; i < segments; i++) {
+      const px = sx + center.x;
+      const py = sy + center.y;
+      const t = sx;
+      sx = cos * sx - sin * sy;
+      sy = cos * sy + sin * t;
+      this.tempP1.set(px, py);
+      this.tempP2.set(sx + center.x, sy + center.y);
+      this.drawFilledTriangle(this.tempP1, this.tempP2, center);
     }
   }
 
   /**
    * Draw a circle.
-   * @param x - The x coordinate of the circle center.
-   * @param y - The y coordinate of the circle center.
+   * @param center - The center of the circle.
    * @param radius - The radius of the circle.
    * @param segments - The number of segments in the circle.
    * @param lineWidth - The width of the line.
-   * @param color - The color of the circle.
-   * @param transform - The transformation matrix.
    */
-  drawCircle(
-    x: number,
-    y: number,
-    radius: number,
-    segments: number,
-    lineWidth: number,
-    color: Color,
-    transform: Mat4,
-  ): void {
-    const theta = (2 * Math.PI) / segments;
-    const cos = Math.cos(theta);
-    const sin = Math.sin(theta);
-    let sx = radius;
-    let sy = 0.0;
-    for (let i = 0; i < segments; i++) {
-      const px = sx + x;
-      const py = sy + y;
-      const t = sx;
-      sx = cos * sx - sin * sy;
-      sy = cos * sy + sin * t;
-      this.drawLine(sx + x, sy + y, px, py, 'outside', lineWidth, color, transform);
-    }
-  }
-
-  /**
-   * Draw a solid circle.
-   * @param x - The x coordinate of the circle center.
-   * @param y - The y coordinate of the circle center.
-   * @param radius - The radius of the circle.
-   * @param segments - The number of segments in the circle.
-   * @param color - The color of the circle.
-   * @param transform - The transformation matrix.
-   */
-  drawSolidCircle(x: number, y: number, radius: number, segments: number, color: Color, transform: Mat4): void {
-    const theta = (2 * Math.PI) / segments;
-    const cos = Math.cos(theta);
-    const sin = Math.sin(theta);
-    let sx = radius;
-    let sy = 0.0;
-    for (let i = 0; i < segments; i++) {
-      const px = sx + x;
-      const py = sy + y;
-      const t = sx;
-      sx = cos * sx - sin * sy;
-      sy = cos * sy + sin * t;
-      this.drawSolidTriangle(px, py, sx + x, sy + y, x, y, color, transform);
-    }
-  }
-
-  /**
-   * Draw a polygon.
-   * @param x - The x coordinate of the polygon center.
-   * @param y - The y coordinate of the polygon center.
-   * @param vertices - The vertices of the polygon.
-   * @param lineWidth - The width of the line.
-   * @param color - The color of the polygon.
-   * @param transform - The transformation matrix.
-   */
-  drawPolygon(x: number, y: number, vertices: Vec2[], lineWidth: number, color: Color, transform: Mat4): void {
-    if (vertices.length < 3) {
-      console.log('Cannot draw polygon with less than 3 points');
+  drawCircle(center: Vec2, radius: number, segments: number, lineWidth: number): void {
+    if (radius <= 0) {
+      console.error('ShapeRenderer: Radius must be positive.');
       return;
     }
 
-    const start = vertices[0];
-    let last = start;
-
-    for (let i = 1; i < vertices.length; i++) {
-      const current = vertices[i];
-
-      this.drawLine(last.x + x, last.y + y, current.x + x, current.y + y, 'inside', lineWidth, color, transform);
-      last = current;
+    if (segments < 3) {
+      console.error('ShapeRenderer: Segments must be at least 3.');
+      return;
     }
 
-    this.drawLine(last.x + x, last.y + y, start.x + x, start.y + y, 'inside', lineWidth, color, transform);
+    if (lineWidth <= 0) {
+      console.error('ShapeRenderer: Line width must be positive.');
+      return;
+    }
+
+    const theta = (2 * Math.PI) / segments;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    let sx = radius;
+    let sy = 0.0;
+    for (let i = 0; i < segments; i++) {
+      const px = sx + center.x;
+      const py = sy + center.y;
+      const t = sx;
+      sx = cos * sx - sin * sy;
+      sy = cos * sy + sin * t;
+      this.tempP1.set(px, py);
+      this.tempP2.set(sx + center.x, sy + center.y);
+      this.drawLine(this.tempP1, this.tempP2, 'outside', lineWidth);
+    }
   }
 
   /**
-   * Draw a solid polygon.
-   * @param x - The x coordinate of the polygon center.
-   * @param y - The y coordinate of the polygon center.
+   * Draw a filled polygon.
+   * @param center - The center of the polygon.
    * @param vertices - The vertices of the polygon.
-   * @param color - The color of the polygon.
-   * @param transform - The transformation matrix.
    */
-  drawSolidPolygon(x: number, y: number, vertices: Vec2[], color: Color, transform: Mat4): void {
+  drawFilledPolygon(center: Vec2, vertices: Vec2[]): void {
     if (vertices.length < 3) {
       console.log('Cannot draw polygon with less than 3 points');
       return;
@@ -352,18 +335,41 @@ export class ShapeRenderer extends BaseRenderer {
 
     for (let i = 2; i < vertices.length; i++) {
       const current = vertices[i];
-      this.drawSolidTriangle(
-        first.x + x,
-        first.y + y,
-        last.x + x,
-        last.y + y,
-        current.x + x,
-        current.y + y,
-        color,
-        transform,
-      );
+      this.tempP1.set(first.x + center.x, first.y + center.y);
+      this.tempP2.set(last.x + center.x, last.y + center.y);
+      this.tempP3.set(current.x + center.x, current.y + center.y);
+      this.drawFilledTriangle(this.tempP1, this.tempP2, this.tempP3);
       last = current;
     }
+  }
+
+  /**
+   * Draw a polygon.
+   * @param center - The center of the polygon.
+   * @param vertices - The vertices of the polygon.
+   * @param lineWidth - The width of the line.
+   */
+  drawPolygon(center: Vec2, vertices: Vec2[], lineWidth: number): void {
+    if (vertices.length < 3) {
+      console.log('Cannot draw polygon with less than 3 points');
+      return;
+    }
+
+    const start = vertices[0];
+    let last = start;
+
+    for (let i = 1; i < vertices.length; i++) {
+      const current = vertices[i];
+      this.tempP1.set(last.x + center.x, last.y + center.y);
+      this.tempP2.set(current.x + center.x, current.y + center.y);
+      this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
+      last = current;
+    }
+
+    // Connect the last vertex to the first.
+    this.tempP1.set(last.x + center.x, last.y + center.y);
+    this.tempP2.set(start.x + center.x, start.y + center.y);
+    this.drawLine(this.tempP1, this.tempP2, 'inside', lineWidth);
   }
 
   /**

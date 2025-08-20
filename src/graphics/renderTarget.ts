@@ -46,7 +46,7 @@ export class RenderTarget {
     this.width = width;
     this.height = height;
     this.projection = new Mat4();
-    this.projection.ortho(0, width, height, 0, 0, 1000);
+    this.projection.ortho({ left: 0, right: width, bottom: height, top: 0, near: 0, far: 1000 });
 
     const gl = this.context.gl;
 

@@ -15,6 +15,17 @@ export type AssetLoaderLoadParams = {
   keep?: boolean;
 };
 
+export type AssetsLoadParams<T> = {
+  type: new (
+    // biome-ignore lint/suspicious/noExplicitAny: Asset items can take any parameters.
+    ...args: any[]
+  ) => T;
+  id: string;
+  path: string;
+  props?: unknown;
+  keep?: boolean;
+};
+
 /**
  * Base class for custom asset loaders.
  */
@@ -115,14 +126,7 @@ export class Assets {
    * @param keep Should this asset be stored.
    * @returns The loaded asset.
    */
-  load<T>(
-    // biome-ignore lint/suspicious/noExplicitAny: The constructor for type T can take any parameters.
-    type: new (...args: any[]) => T,
-    id: string,
-    path: string,
-    props?: unknown,
-    keep: boolean = true,
-  ): Promise<T> {
+  load<T>({ type, id, path, props, keep = true }: AssetsLoadParams<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       const loader = this.loaders.get(type);
       if (loader) {
@@ -149,8 +153,8 @@ export class Assets {
       const count = assets.length;
       let loaded = 0;
 
-      for (const { type, id, path, props } of assets) {
-        this.load(type, id, path, props)
+      for (const props of assets) {
+        this.load(props)
           .then(() => {
             loaded++;
             if (loaded === count) {

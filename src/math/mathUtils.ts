@@ -100,6 +100,8 @@ export function rotateAround(point: Vec2, center: Vec2, rotation: number, out?: 
  * @param out - Optional variable to store the intersect position in.
  * @returns True if the lines intersect.
  */
+
+// biome-ignore lint/nursery/useMaxParams: This will be called a lot times and will result in a lot of created objects.
 export function linesIntersect(p1Start: Vec2, p1End: Vec2, p2Start: Vec2, p2End: Vec2, out?: Vec2): boolean {
   const b = p1End.clone().subtract(p1Start);
   const d = p2End.clone().subtract(p2Start);

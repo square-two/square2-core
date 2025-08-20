@@ -18,26 +18,6 @@ export class Shader {
   readonly type: ShaderType;
 
   /**
-   * All blending parameters for the shader.
-   */
-  blendParameters: BlendParameters;
-
-  /**
-   * All texture filtering and wrapping parameters for the shader.
-   */
-  textureParameters: TextureParameters;
-
-  /**
-   * The location of the projection matrix uniform.
-   */
-  readonly projectionLocation: WebGLUniformLocation;
-
-  /**
-   * The location of the texture uniform if this is an image shader.
-   */
-  readonly textureLocation: WebGLUniformLocation | null;
-
-  /**
    * The location of the vertex position attribute.
    */
   readonly vertexPositionLocation = 0;
@@ -52,21 +32,27 @@ export class Shader {
    */
   readonly vertexUVLocation = 2;
 
+  readonly uniforms: Record<string, WebGLUniformLocation>;
+
+  /**
+   * All blending parameters for the shader.
+   */
+  blendParameters: BlendParameters;
+
+  /**
+   * All texture filtering and wrapping parameters for the shader.
+   */
+  textureParameters: TextureParameters;
+
+  private static shapeVertShader: WebGLShader;
+
+  private static imageVertShader: WebGLShader;
+
   /**
    * The WebGL rendering context.
    */
   @inject('glContext')
   private context!: GLContext;
-
-  /**
-   * The compiled vertex shader.
-   */
-  private vertexShader: WebGLShader;
-
-  /**
-   * The compiled fragment shader.
-   */
-  private fragmentShader: WebGLShader;
 
   /**
    * The shader program.
@@ -85,31 +71,28 @@ export class Shader {
    */
   constructor(type: ShaderType, source: string) {
     this.type = type;
+    this.uniforms = {};
     const gl = this.context.gl;
 
     this.anisotropicFilter = this.context.gl.getExtension('EXT_texture_filter_anisotropic');
 
-    const vertexSource =
-      type === 'shape' ? getShapeVertexSource(this.context.isGL1) : getImageVertexSource(this.context.isGL1);
+    const vertexShader = type === 'shape' ? this.getShapeVertShader() : this.getImageVertShader();
+    const fragmentShader = this.createShader(gl.FRAGMENT_SHADER, source);
 
-    this.vertexShader = this.createShader(gl.VERTEX_SHADER, vertexSource);
-    this.fragmentShader = this.createShader(gl.FRAGMENT_SHADER, source);
-
-    this.program = this.createProgram();
+    this.program = this.createProgram(gl, vertexShader, fragmentShader);
 
     const projection = this.getUniformLocation('u_projectionMatrix');
     if (!projection) {
       throw new Error('projectionMatrix not available in the vertex shader');
     }
-    this.projectionLocation = projection;
+    this.uniforms.u_projectionMatrix = projection;
 
-    this.textureLocation = null;
     if (type === 'image') {
       const texture = this.getUniformLocation('u_texture');
       if (!texture) {
         throw new Error('tex not available in the fragment shader');
       }
-      this.textureLocation = texture;
+      this.uniforms.u_texture = texture;
     }
 
     this.blendParameters = {
@@ -200,8 +183,28 @@ export class Shader {
    */
   destroy(): void {
     this.context.gl.deleteProgram(this.program);
-    this.context.gl.deleteShader(this.vertexShader);
-    this.context.gl.deleteShader(this.fragmentShader);
+  }
+
+  private getShapeVertShader(): WebGLShader {
+    if (!Shader.shapeVertShader) {
+      Shader.shapeVertShader = this.createShader(
+        this.context.gl.VERTEX_SHADER,
+        getShapeVertexSource(this.context.isGL1),
+      );
+    }
+
+    return Shader.shapeVertShader;
+  }
+
+  private getImageVertShader(): WebGLShader {
+    if (!Shader.imageVertShader) {
+      Shader.imageVertShader = this.createShader(
+        this.context.gl.VERTEX_SHADER,
+        getImageVertexSource(this.context.isGL1),
+      );
+    }
+
+    return Shader.imageVertShader;
   }
 
   /**
@@ -230,12 +233,15 @@ export class Shader {
    * Create a shader program.
    * @returns The shader program.
    */
-  private createProgram(): WebGLProgram {
-    const gl = this.context.gl;
+  private createProgram(
+    gl: WebGL2RenderingContext,
+    vertexShader: WebGLShader,
+    fragmentShader: WebGLShader,
+  ): WebGLProgram {
     const program = gl.createProgram();
     if (program) {
-      gl.attachShader(program, this.vertexShader);
-      gl.attachShader(program, this.fragmentShader);
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
       gl.linkProgram(program);
 
       const success = gl.getProgramParameter(program, gl.LINK_STATUS) as boolean;

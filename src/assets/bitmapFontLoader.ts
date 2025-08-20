@@ -12,8 +12,8 @@ export class BitmapFontLoader extends AssetLoader<BitmapFont> {
   }
 
   async load({ id, path, keep = true }: AssetLoaderLoadParams): Promise<BitmapFont> {
-    const image = await this.assets.load(Image, `square2_bitmap_font_${id}`, `${path}.png`, undefined, keep);
-    const data = await this.assets.load(String, `square2_bitmap_font_${id}`, `${path}.fnt`, undefined, keep);
+    const image = await this.assets.load({ type: Image, id: `square2_bitmap_font_${id}`, path: `${path}.png`, keep });
+    const data = await this.assets.load({ type: String, id: `square2_bitmap_font_${id}`, path: `${path}.fnt`, keep });
 
     const font = new BitmapFont(image, data.valueOf());
     if (keep) {

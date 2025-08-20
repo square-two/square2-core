@@ -1,4 +1,5 @@
 import { Mat4 } from '../../math/mat4.js';
+import { Color } from '../color.js';
 import type { GLContext } from '../glContext.js';
 import type { Shader } from '../shader.js';
 
@@ -6,6 +7,10 @@ import type { Shader } from '../shader.js';
  * The base renderer class that all renderers should extend.
  */
 export class BaseRenderer {
+  color: Color;
+
+  transform: Mat4;
+
   /**
    * The amount of triangles that can be stored per draw call.
    */
@@ -63,6 +68,8 @@ export class BaseRenderer {
   constructor(context: GLContext) {
     this.context = context;
     this.projection = new Mat4();
+    this.color = new Color(1, 1, 1, 1);
+    this.transform = new Mat4();
   }
 
   /**

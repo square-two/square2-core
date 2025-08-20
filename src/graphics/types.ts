@@ -61,3 +61,5 @@ export type TextureParameters = {
   uWrap: TextureWrap;
   vWrap: TextureWrap;
 };
+
+export type Flip = 'none' | 'horizontal' | 'vertical' | 'both';

@@ -1,5 +1,5 @@
 /** 4x4 matrix array so 16 items. */
-type Mat4Value = [
+export type Mat4Value = [
   number,
   number,
   number,
@@ -17,6 +17,24 @@ type Mat4Value = [
   number,
   number,
 ];
+
+export type OrthoParams = {
+  left: number;
+  right: number;
+  bottom: number;
+  top: number;
+  near: number;
+  far: number;
+};
+
+export type From2dRotationTranslationScaleParams = {
+  rotation: number;
+  x: number;
+  y: number;
+  scaleX: number;
+  scaleY: number;
+  out?: Mat4;
+};
 
 /**
  * A 4x4 matrix class.
@@ -172,14 +190,14 @@ export class Mat4 {
    * @param out - Optional matrix to store the result.
    * @returns The matrix.
    */
-  static from2dRotationTranslationScale(
-    rotation: number,
-    x: number,
-    y: number,
-    scaleX: number,
-    scaleY: number,
-    out?: Mat4,
-  ): Mat4 {
+  static from2dRotationTranslationScale({
+    rotation,
+    x,
+    y,
+    scaleX,
+    scaleY,
+    out,
+  }: From2dRotationTranslationScaleParams): Mat4 {
     const result = out ?? Mat4.get();
 
     const z = Math.sin(rotation * 0.5);
@@ -406,14 +424,16 @@ export class Mat4 {
 
   /**
    * Set an orthographic projection matrix.
-   * @param left - The left side of the view.
-   * @param right - The right side of the view.
-   * @param bottom - The bottom side of the view.
-   * @param top - The top side of the view.
-   * @param near - The near clipping plane.
-   * @param far - The far clipping plane.
+   * @param params - The parameters for the orthographic projection.
+   * @param params.left - The left side of the view.
+   * @param params.right - The right side of the view.
+   * @param params.bottom - The bottom side of the view.
+   * @param params.top - The top side of the view.
+   * @param params.near - The near clipping plane.
+   * @param params.far - The far clipping plane.
    */
-  ortho(left: number, right: number, bottom: number, top: number, near: number, far: number): void {
+
+  ortho({ left, right, bottom, top, near, far }: OrthoParams): void {
     const lr = 1 / (left - right);
     const bt = 1 / (bottom - top);
     const nf = 1 / (near - far);

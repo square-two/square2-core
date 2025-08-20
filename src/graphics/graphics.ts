@@ -1,4 +1,5 @@
-import { Mat4 } from '../math/mat4.js';
+import { Mat4, type OrthoParams } from '../math/mat4.js';
+import type { Rectangle } from '../math/rectangle.js';
 import type { Vec2 } from '../math/vec2.js';
 import type { BitmapFont } from './bitmapFont.js';
 import { Color } from './color.js';
@@ -8,7 +9,7 @@ import { ImageRenderer } from './renderers/imageRenderer.js';
 import { ShapeRenderer } from './renderers/shapeRenderer.js';
 import type { RenderTarget } from './renderTarget.js';
 import type { Shader } from './shader.js';
-import type { LineAlign } from './types.js';
+import type { Flip, LineAlign } from './types.js';
 
 const MAX_TARGET_STACK = 64;
 const MAX_TRANSFORM_STACK = 128;
@@ -37,6 +38,15 @@ export class Graphics {
   private canvas: HTMLCanvasElement;
 
   private pixelRatio: number;
+
+  private orthoProjection: OrthoParams = {
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    near: -1,
+    far: 1,
+  };
 
   constructor(context: GLContext, canvas: HTMLCanvasElement, pixelRatio: number) {
     this.context = context;
@@ -115,11 +125,17 @@ export class Graphics {
       height = this.canvas.height * this.pixelRatio;
     }
 
-    this.projection.ortho(0, width, height, 0, 0, 1000);
+    this.orthoProjection.right = width;
+    this.orthoProjection.bottom = height;
+    this.projection.ortho(this.orthoProjection);
+
     gl.viewport(0, 0, width, height);
 
     this.shapeRenderer.setProjection(this.projection);
     this.imageRenderer.setProjection(this.projection);
+
+    this.shapeRenderer.start();
+    this.imageRenderer.start();
 
     if (clear) {
       if (newClearColor) {
@@ -131,178 +147,186 @@ export class Graphics {
     }
   }
 
-  drawBatch(): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawBatch();
+  /**
+   * Draw the current batch to the screen or target.
+   */
+  commit(): void {
+    this.shapeRenderer.commit();
+    this.imageRenderer.commit();
   }
 
+  /**
+   * Set the current shader.
+   * @param shader - The shader to use. If not provided, the default shader will be used.
+   */
   setShader(shader?: Shader): void {
     this.shapeRenderer.setShader(shader);
     this.imageRenderer.setShader(shader);
   }
 
-  drawSolidTriangle(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawSolidTriangle(x1, y1, x2, y2, x3, y3, this.color, this.transform);
+  /**
+   * Draw a filled triangle.
+   * @param p1 - The first point of the triangle.
+   * @param p2 - The second point of the triangle.
+   * @param p3 - The third point of the triangle.
+   */
+  drawFilledTriangle(p1: Vec2, p2: Vec2, p3: Vec2): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.shapeRenderer.drawFilledTriangle(p1, p2, p3);
   }
 
-  drawSolidRect(x: number, y: number, width: number, height: number): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawSolidRect(x, y, width, height, this.color, this.transform);
+  /**
+   * Draw a line.
+   * @param p1 - The first point of the line.
+   * @param p2 - The second point of the line.
+   * @param align - The alignment of the line.
+   * @param lineWidth - The width of the line.
+   */
+  drawLine(p1: Vec2, p2: Vec2, align: LineAlign = 'center', lineWidth: number = 1): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.shapeRenderer.drawLine(p1, p2, align, lineWidth);
   }
 
-  drawRect(x: number, y: number, width: number, height: number, lineWidth: number = 1): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawRect(x, y, width, height, lineWidth, this.color, this.transform);
+  /**
+   * Draw a filled rectangle.
+   * @param rect - The rectangle to draw.
+   */
+  drawFilledRect(rect: Rectangle): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.shapeRenderer.drawFilledRect(rect);
   }
 
-  drawLine(x1: number, y1: number, x2: number, y2: number, align: LineAlign, lineWidth: number = 1): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawLine(x1, y1, x2, y2, align, lineWidth, this.color, this.transform);
+  /**
+   * Draw a rectangle.
+   * @param rect - The rectangle to draw.
+   * @param lineWidth - The width of the line.
+   */
+  drawRect(rect: Rectangle, lineWidth: number = 1): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.shapeRenderer.drawRect(rect, lineWidth);
   }
 
-  drawSolidCircle(x: number, y: number, radius: number, segments: number = 32): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawSolidCircle(x, y, radius, segments, this.color, this.transform);
+  /**
+   * Draw a filled circle.
+   * @param center - The center of the circle.
+   * @param radius - The radius of the circle.
+   * @param segments - The number of segments in the circle.
+   */
+  drawFilledCircle(center: Vec2, radius: number, segments: number = 32): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.drawFilledCircle(center, radius, segments);
   }
 
-  drawCircle(x: number, y: number, radius: number, segments: number = 32, lineWidth: number = 1): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawCircle(x, y, radius, segments, lineWidth, this.color, this.transform);
+  /**
+   * Draw a circle.
+   * @param center - The center of the circle.
+   * @param radius - The radius of the circle.
+   * @param segments - The number of segments in the circle.
+   * @param lineWidth - The width of the line.
+   */
+  drawCircle(center: Vec2, radius: number, segments: number = 32, lineWidth: number = 1): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.drawCircle(center, radius, segments, lineWidth);
   }
 
-  drawSolidPolygon(x: number, y: number, vertices: Vec2[]): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawSolidPolygon(x, y, vertices, this.color, this.transform);
+  /**
+   * Draw a filled polygon.
+   * @param center - The center of the polygon.
+   * @param vertices - The vertices of the polygon.
+   */
+  drawFilledPolygon(center: Vec2, vertices: Vec2[]): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.drawFilledPolygon(center, vertices);
   }
 
-  drawPolygon(x: number, y: number, vertices: Vec2[], lineWidth: number = 1): void {
-    this.imageRenderer.drawBatch();
-    this.shapeRenderer.drawPolygon(x, y, vertices, lineWidth, this.color, this.transform);
+  /**
+   * Draw a polygon.
+   * @param center - The center of the polygon.
+   * @param vertices - The vertices of the polygon.
+   * @param lineWidth - The width of the line.
+   */
+  drawPolygon(center: Vec2, vertices: Vec2[], lineWidth: number = 1): void {
+    this.imageRenderer.commit();
+    this.shapeRenderer.color = this.color;
+    this.shapeRenderer.transform = this.transform;
+    this.drawPolygon(center, vertices, lineWidth);
   }
 
-  drawImage(x: number, y: number, image: Image, flipX: boolean = false, flipY: boolean = false): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawImage(x, y, flipX, flipY, image, this.color, this.transform);
+  /**
+   * Draw an image to the screen.
+   * @param image - The image to draw.
+   * @param position - The position to draw the image at.
+   * @param flip - Should the image be flipped.
+   * @param frame - Optional region of the image to draw. Defaults to the full image.
+   * @param size - Optional size to scale the image to. Defaults to the image size.
+   */
+
+  // biome-ignore lint/nursery/useMaxParams: This will get called often and should be optimized for performance.
+  drawImage(image: Image, position: Vec2, flip: Flip, frame?: Rectangle, size?: Vec2): void {
+    this.shapeRenderer.commit();
+    this.imageRenderer.color = this.color;
+    this.imageRenderer.transform = this.transform;
+    this.imageRenderer.drawImage(image, position, flip, frame, size);
   }
 
-  drawScaledImage(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    image: Image,
-    flipX: boolean = false,
-    flipY: boolean = false,
-  ): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawScaledImage(x, y, width, height, flipX, flipY, image, this.color, this.transform);
-  }
+  /**
+   * Draws an image on the canvas using the specified corner points.
+   * @param image - The image to draw.
+   * @param topLeft - The top-left corner point.
+   * @param topRight - The top-right corner point.
+   * @param bottomRight - The bottom-right corner point.
+   * @param bottomLeft - The bottom-left corner point.
+   * @param frame - Optional region of the image to draw. Defaults to the full image.
+   */
 
-  drawImageSection(
-    x: number,
-    y: number,
-    sx: number,
-    sy: number,
-    sw: number,
-    sh: number,
-    image: Image,
-    flipX: boolean = false,
-    flipY: boolean = false,
-  ): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawImageSection(x, y, sx, sy, sw, sh, flipX, flipY, image, this.color, this.transform);
-  }
-
-  drawScaledImageSection(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    sx: number,
-    sy: number,
-    sw: number,
-    sh: number,
-    image: Image,
-    flipX: boolean = false,
-    flipY: boolean = false,
-  ): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawScaledImageSection(
-      x,
-      y,
-      width,
-      height,
-      sx,
-      sy,
-      sw,
-      sh,
-      flipX,
-      flipY,
-      image,
-      this.color,
-      this.transform,
-    );
-  }
-
+  // biome-ignore lint/nursery/useMaxParams: This will get called often and should be optimized for performance.
   drawImagePoints(
-    tlX: number,
-    tlY: number,
-    trX: number,
-    trY: number,
-    brX: number,
-    brY: number,
-    blX: number,
-    blY: number,
     image: Image,
+    topLeft: Vec2,
+    topRight: Vec2,
+    bottomRight: Vec2,
+    bottomLeft: Vec2,
+    frame?: Rectangle,
   ): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawImagePoints(tlX, tlY, trX, trY, brX, brY, blX, blY, image, this.color, this.transform);
+    this.shapeRenderer.commit();
+    this.imageRenderer.color = this.color;
+    this.imageRenderer.transform = this.transform;
+    this.imageRenderer.drawImagePoints(image, topLeft, topRight, bottomRight, bottomLeft, frame);
   }
 
-  drawImageSectionPoints(
-    tlX: number,
-    tlY: number,
-    trX: number,
-    trY: number,
-    brX: number,
-    brY: number,
-    blX: number,
-    blY: number,
-    sx: number,
-    sy: number,
-    sw: number,
-    sh: number,
-    image: Image,
-  ): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawImageSectionPoints(
-      tlX,
-      tlY,
-      trX,
-      trY,
-      brX,
-      brY,
-      blX,
-      blY,
-      sx,
-      sy,
-      sw,
-      sh,
-      image,
-      this.color,
-      this.transform,
-    );
+  /**
+   * Draw a render target to the screen.
+   * @param position - The position to draw the render target at.
+   * @param target - The render target to draw.
+   */
+  drawRenderTarget(position: Vec2, target: RenderTarget): void {
+    this.shapeRenderer.commit();
+    this.imageRenderer.drawRenderTarget(position, target);
   }
 
-  drawRenderTarget(x: number, y: number, target: RenderTarget): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawRenderTarget(x, y, target, this.color, this.transform);
-  }
-
-  drawBitmapText(x: number, y: number, font: BitmapFont, text: string): void {
-    this.shapeRenderer.drawBatch();
-    this.imageRenderer.drawBitmapText(x, y, font, text, this.color, this.transform);
+  /**
+   * Draw a string of text to the screen.
+   * @param position - The position to draw the text at.
+   * @param font - The font to use.
+   * @param text - The text to draw.
+   */
+  drawBitmapText(position: Vec2, font: BitmapFont, text: string): void {
+    this.shapeRenderer.commit();
+    this.imageRenderer.drawBitmapText(position, font, text);
   }
 
   setBool(location: WebGLUniformLocation | null, value: boolean): void {
@@ -321,6 +345,7 @@ export class Graphics {
     this.context.gl.uniform3i(location, value1, value2, value3);
   }
 
+  // biome-ignore lint/nursery/useMaxParams: Can be called a lot so optimize for performance
   setInt4(location: WebGLUniformLocation | null, value1: number, value2: number, value3: number, value4: number): void {
     this.context.gl.uniform4i(location, value1, value2, value3, value4);
   }
@@ -341,6 +366,7 @@ export class Graphics {
     this.context.gl.uniform3f(location, value1, value2, value3);
   }
 
+  // biome-ignore lint/nursery/useMaxParams: Can be called a lot so optimize for performance
   setFloat4(
     location: WebGLUniformLocation | null,
     value1: number,

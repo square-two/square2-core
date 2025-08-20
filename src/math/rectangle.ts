@@ -42,6 +42,23 @@ export class Rectangle {
     this.height = height;
   }
 
+  copyFrom(rect: Rectangle): void {
+    this.x = rect.x;
+    this.y = rect.y;
+    this.width = rect.width;
+    this.height = rect.height;
+  }
+
+  clone(out?: Rectangle): Rectangle {
+    if (out) {
+      out.set(this.x, this.y, this.width, this.height);
+
+      return out;
+    }
+
+    return new Rectangle(this.x, this.y, this.width, this.height);
+  }
+
   /**
    * Check if a point is inside a rectangle.
    * @param x - The x position to check.
